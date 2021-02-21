@@ -17,7 +17,7 @@ def preexec_function():
     # signal handler SIG_IGN.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-Debugging = True
+Debugging = False
 script_path = os.path.join(os.path.abspath(os.path.dirname(__file__)))
 helperExe = os.path.join(script_path, "bluepy-helper")
 
@@ -290,7 +290,6 @@ class BluepyHelper:
 
     def _stopHelper(self):
         if self._helper is not None:
-            print("Stopping helper")
             DBG("Stopping ", helperExe)
             #while True: # Attempt to drain stdout before wait()
             #    rv = self._helper.stdout.readline()
@@ -299,10 +298,8 @@ class BluepyHelper:
             self._poller.unregister(self._helper.stdout)
             self._helper.stdin.write("quit\n")
             self._helper.stdin.flush()
-            print("Waiting for it to quit...")
             self._helper.wait()
             self._helper = None
-            print("Should be gone now")
         if self._stderr is not None:
             self._stderr.close()
             self._stderr = None
@@ -446,7 +443,6 @@ class Peripheral(BluepyHelper):
             while rsp['state'][0] == 'tryconn':
                 rsp = self._getResp('stat')
         except TypeError:
-            print("Probably timed out.")
             if rsp is None:
                 raise BTLETimeoutError("Timeout waiting for response from %s" % addr)
             else:

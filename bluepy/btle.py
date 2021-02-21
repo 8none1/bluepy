@@ -294,6 +294,10 @@ class BluepyHelper:
             self._poller.unregister(self._helper.stdout)
             self._helper.stdin.write("quit\n")
             self._helper.stdin.flush()
+            while True:
+                rv = self._helper.stdout.readline()
+                if not line:
+                    break
             self._helper.wait()
             self._helper = None
         if self._stderr is not None:

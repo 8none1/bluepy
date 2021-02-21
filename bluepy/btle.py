@@ -294,7 +294,7 @@ class BluepyHelper:
             self._poller.unregister(self._helper.stdout)
             self._helper.stdin.write("quit\n")
             self._helper.stdin.flush()
-            while True:
+            while True: # Attempt to drain stdout before wait()
                 rv = self._helper.stdout.readline()
                 if not rv:
                     break
@@ -466,10 +466,7 @@ class Peripheral(BluepyHelper):
         self.setDelegate(None)
 
         self._writeCmd("disc\n")
-        #self._getResp('stat') # As a test, stop waiting for a response from the disconnect
-        # It seems that if you have a flaky connection then things can hang here for a long time
-        # waiting from a disconnect message that never comes.  In theory the Bluetooth stack
-        # will clear this up on its own later.
+        self._getResp('stat')
         self._stopHelper()
 
     def discoverServices(self):

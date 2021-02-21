@@ -17,7 +17,7 @@ def preexec_function():
     # signal handler SIG_IGN.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-Debugging = False
+Debugging = True
 script_path = os.path.join(os.path.abspath(os.path.dirname(__file__)))
 helperExe = os.path.join(script_path, "bluepy-helper")
 
@@ -292,10 +292,10 @@ class BluepyHelper:
         if self._helper is not None:
             print("Stopping helper")
             DBG("Stopping ", helperExe)
-            while True: # Attempt to drain stdout before wait()
-                rv = self._helper.stdout.readline()
-                if not rv:
-                    break
+            #while True: # Attempt to drain stdout before wait()
+            #    rv = self._helper.stdout.readline()
+            #    if not rv:
+            #        break
             self._poller.unregister(self._helper.stdout)
             self._helper.stdin.write("quit\n")
             self._helper.stdin.flush()

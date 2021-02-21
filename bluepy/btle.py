@@ -296,7 +296,7 @@ class BluepyHelper:
             self._helper.stdin.flush()
             while True:
                 rv = self._helper.stdout.readline()
-                if not line:
+                if not rv:
                     break
             self._helper.wait()
             self._helper = None

@@ -81,6 +81,9 @@ class BTLEGattError(BTLEException):
     def __init__(self, message, rsp=None):
         BTLEException.__init__(self, message, rsp)
 
+class BTLETimeoutError(BTLEException):
+    def __init__(self, message, rsp=None):
+        BTLEException.__init__(self, message, rsp)
 
 
 class UUID:
@@ -241,7 +244,7 @@ class Descriptor:
 
     def __str__(self):
         return "Descriptor <%s>" % self.uuid.getCommonName()
-        
+
 
     def read(self):
         return self.peripheral.readCharacteristic(self.handle)
@@ -333,7 +336,7 @@ class BluepyHelper:
                 resp[tag].append(val)
         return resp
 
-    def _waitResp(self, wantType, timeout=None):
+    def _waitResp(self, wantType, timeout=5):
         while True:
             if self._helper.poll() is not None:
                 raise BTLEInternalError("Helper exited")
@@ -399,7 +402,7 @@ class Peripheral(BluepyHelper):
     def __exit__(self, type, value, traceback):
         self.disconnect()
 
-    def _getResp(self, wantType, timeout=None):
+    def _getResp(self, wantType, timeout=5):
         if isinstance(wantType, list) is not True:
             wantType = [wantType]
 
@@ -432,8 +435,16 @@ class Peripheral(BluepyHelper):
         else:
             self._writeCmd("conn %s %s\n" % (addr, addrType))
         rsp = self._getResp('stat')
-        while rsp['state'][0] == 'tryconn':
-            rsp = self._getResp('stat')
+        try:
+            while rsp['state'][0] == 'tryconn':
+                rsp = self._getResp('stat')
+        except TypeError:
+            print("Probably timed out.")
+            if rsp is None:
+                raise BTLETimeoutError("Timeout waiting for response from %s" % addr)
+            else:
+                raise # Fix me
+
         if rsp['state'][0] != 'conn':
             self._stopHelper()
             raise BTLEDisconnectError("Failed to connect to peripheral %s, addr type: %s" % (addr, addrType), rsp)
@@ -451,7 +462,10 @@ class Peripheral(BluepyHelper):
         self.setDelegate(None)
 
         self._writeCmd("disc\n")
-        self._getResp('stat')
+        #self._getResp('stat') # As a test, stop waiting for a response from the disconnect
+        # It seems that if you have a flaky connection then things can hang here for a long time
+        # waiting from a disconnect message that never comes.  In theory the Bluetooth stack
+        # will clear this up on its own later.
         self._stopHelper()
 
     def discoverServices(self):
@@ -489,7 +503,7 @@ class Peripheral(BluepyHelper):
         if 'hstart' not in rsp:
             raise BTLEGattError("Service %s not found" % (uuid.getCommonName()), rsp)
         svc = Service(self, uuid, rsp['hstart'][0], rsp['hend'][0])
-        
+
         if self._serviceMap is None:
             self._serviceMap = {}
         self._serviceMap[uuid] = svc
@@ -699,7 +713,7 @@ class ScanEntry:
         self.connectable = ((resp['flag'][0] & 0x4) == 0)
         data = resp.get('d', [''])[0]
         self.rawData = data
-        
+
         # Note: bluez is notifying devices twice: once with advertisement data,
         # then with scan response data. Also, the device may update the
         # advertisement or scan data
@@ -714,7 +728,7 @@ class ScanEntry:
 
         self.updateCount += 1
         return isNewData
-     
+
     def _decodeUUID(self, val, nbytes):
         if len(val) < nbytes:
             return None
@@ -731,7 +745,7 @@ class ScanEntry:
             if len(val) >= (i+nbytes):
                 result.append(self._decodeUUID(val[i:i+nbytes],nbytes))
         return result
-    
+
     def getDescription(self, sdid):
         return self.dataTags.get(sdid, hex(sdid))
 
@@ -767,20 +781,20 @@ class ScanEntry:
             return ','.join(str(v) for v in val)
         else:
             return binascii.b2a_hex(val).decode('ascii')
-    
+
     def getScanData(self):
         '''Returns list of tuples [(tag, description, value)]'''
         return [ (sdid, self.getDescription(sdid), self.getValueText(sdid))
                     for sdid in self.scanData.keys() ]
-         
- 
+
+
 class Scanner(BluepyHelper):
     def __init__(self,iface=0):
         BluepyHelper.__init__(self)
         self.scanned = {}
         self.iface=iface
         self.passive=False
-    
+
     def _cmd(self):
         return "pasv" if self.passive else "scan"
 
@@ -814,7 +828,7 @@ class Scanner(BluepyHelper):
         while True:
             if timeout:
                 remain = start + timeout - time.time()
-                if remain <= 0.0: 
+                if remain <= 0.0:
                     break
             else:
                 remain = None
@@ -840,7 +854,7 @@ class Scanner(BluepyHelper):
                 isNewData = dev._update(resp)
                 if self.delegate is not None:
                     self.delegate.handleDiscovery(dev, (dev.updateCount <= 1), isNewData)
-                 
+
             else:
                 raise BTLEInternalError("Unexpected response: " + respType, resp)
 

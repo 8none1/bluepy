@@ -336,7 +336,7 @@ class BluepyHelper:
                 resp[tag].append(val)
         return resp
 
-    def _waitResp(self, wantType, timeout=5):
+    def _waitResp(self, wantType, timeout=6.5):
         while True:
             if self._helper.poll() is not None:
                 raise BTLEInternalError("Helper exited")
@@ -402,7 +402,7 @@ class Peripheral(BluepyHelper):
     def __exit__(self, type, value, traceback):
         self.disconnect()
 
-    def _getResp(self, wantType, timeout=5):
+    def _getResp(self, wantType, timeout=6.5):
         if isinstance(wantType, list) is not True:
             wantType = [wantType]
 

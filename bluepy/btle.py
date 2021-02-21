@@ -290,16 +290,19 @@ class BluepyHelper:
 
     def _stopHelper(self):
         if self._helper is not None:
+            print("Stopping helper")
             DBG("Stopping ", helperExe)
-            self._poller.unregister(self._helper.stdout)
-            self._helper.stdin.write("quit\n")
-            self._helper.stdin.flush()
             while True: # Attempt to drain stdout before wait()
                 rv = self._helper.stdout.readline()
                 if not rv:
                     break
+            self._poller.unregister(self._helper.stdout)
+            self._helper.stdin.write("quit\n")
+            self._helper.stdin.flush()
+            print("Waiting for it to quit...")
             self._helper.wait()
             self._helper = None
+            print("Should be gone now")
         if self._stderr is not None:
             self._stderr.close()
             self._stderr = None
